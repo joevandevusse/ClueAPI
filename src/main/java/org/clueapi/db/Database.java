@@ -10,6 +10,11 @@ public class Database {
 
   private final HikariDataSource dataSource;
 
+  /** Constructor for tests — accepts a pre-built datasource. */
+  public Database(HikariDataSource dataSource) {
+    this.dataSource = dataSource;
+  }
+
   public Database() {
     String url      = System.getenv("DB_URL");
     String user     = System.getenv("DB_USER");

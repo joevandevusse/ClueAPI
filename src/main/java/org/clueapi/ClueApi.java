@@ -9,20 +9,21 @@ import org.clueapi.resource.TopicResource;
 public class ClueApi {
 
   public static void main(String[] args) {
-    Database db = new Database();
+    createApp(new Database()).start(7070);
+  }
 
+  static Javalin createApp(Database db) {
     TopicResource topics = new TopicResource(db);
     ClueResource  clues  = new ClueResource(db);
     StatsResource stats  = new StatsResource(db);
 
-    Javalin app = Javalin.create(config -> {
+    return Javalin.create(config -> {
       // Allow any origin so the React dev server can call the API
       config.bundledPlugins.enableCors(cors ->
           cors.addRule(it -> it.anyHost()));
-    }).start(7070);
-
-    app.get("/api/topics",        topics::getAll);
-    app.get("/api/clues",         clues::getByTopic);
-    app.post("/api/stats",        stats::record);
+    })
+    .get("/api/topics", topics::getAll)
+    .get("/api/clues",  clues::getByTopic)
+    .post("/api/stats", stats::record);
   }
 }
