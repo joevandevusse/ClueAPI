@@ -21,26 +21,43 @@ public class ClueResource {
   }
 
   public void getByTopic(Context ctx) throws Exception {
-    String topic = ctx.queryParam("topic");
+    String topic    = ctx.queryParam("topic");
+    String fromDate = ctx.queryParam("fromDate"); // optional, e.g. "2013-09-09"
+
     if (topic == null || topic.isBlank()) {
       ctx.status(400).result("Missing required query parameter: topic");
       return;
     }
 
     List<ClueDto> clues = new ArrayList<>();
-    String sql = """
-        SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
-        FROM clues_java c
-        JOIN category_mappings cm ON c.category = cm.jeopardy_category
-        WHERE cm.canonical_topic = ?
-        ORDER BY RANDOM()
-        LIMIT ?
-        """;
+    String sql = fromDate != null
+        ? """
+          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
+          FROM clues_java c
+          JOIN category_mappings cm ON c.category = cm.jeopardy_category
+          WHERE cm.canonical_topic = ?
+            AND c.game_date >= ?
+          ORDER BY RANDOM()
+          LIMIT ?
+          """
+        : """
+          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
+          FROM clues_java c
+          JOIN category_mappings cm ON c.category = cm.jeopardy_category
+          WHERE cm.canonical_topic = ?
+          ORDER BY RANDOM()
+          LIMIT ?
+          """;
 
     try (Connection conn = db.getConnection();
          PreparedStatement ps = conn.prepareStatement(sql)) {
       ps.setString(1, topic);
-      ps.setInt(2, BATCH_SIZE);
+      if (fromDate != null) {
+        ps.setString(2, fromDate);
+        ps.setInt(3, BATCH_SIZE);
+      } else {
+        ps.setInt(2, BATCH_SIZE);
+      }
       ResultSet rs = ps.executeQuery();
       while (rs.next()) {
         clues.add(new ClueDto(
