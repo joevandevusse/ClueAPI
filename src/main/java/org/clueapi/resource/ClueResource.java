@@ -24,40 +24,49 @@ public class ClueResource {
     String topic    = ctx.queryParam("topic");
     String fromDate = ctx.queryParam("fromDate"); // optional, e.g. "2013-09-09"
 
-    if (topic == null || topic.isBlank()) {
-      ctx.status(400).result("Missing required query parameter: topic");
-      return;
-    }
+    boolean allTopics = (topic == null || topic.isBlank());
 
     List<ClueDto> clues = new ArrayList<>();
-    String sql = fromDate != null
-        ? """
+    String sql;
+    if (!allTopics && fromDate != null) {
+      sql = """
           SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
           FROM clues_java c
           JOIN category_mappings cm ON c.category = cm.jeopardy_category
-          WHERE cm.canonical_topic = ?
-            AND c.game_date >= ?
-          ORDER BY RANDOM()
-          LIMIT ?
-          """
-        : """
-          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
-          FROM clues_java c
-          JOIN category_mappings cm ON c.category = cm.jeopardy_category
-          WHERE cm.canonical_topic = ?
-          ORDER BY RANDOM()
-          LIMIT ?
+          WHERE cm.canonical_topic = ? AND c.game_date >= ?
+          ORDER BY RANDOM() LIMIT ?
           """;
+    } else if (!allTopics) {
+      sql = """
+          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
+          FROM clues_java c
+          JOIN category_mappings cm ON c.category = cm.jeopardy_category
+          WHERE cm.canonical_topic = ?
+          ORDER BY RANDOM() LIMIT ?
+          """;
+    } else if (fromDate != null) {
+      sql = """
+          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
+          FROM clues_java c
+          JOIN category_mappings cm ON c.category = cm.jeopardy_category
+          WHERE c.game_date >= ?
+          ORDER BY RANDOM() LIMIT ?
+          """;
+    } else {
+      sql = """
+          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
+          FROM clues_java c
+          JOIN category_mappings cm ON c.category = cm.jeopardy_category
+          ORDER BY RANDOM() LIMIT ?
+          """;
+    }
 
     try (Connection conn = db.getConnection();
          PreparedStatement ps = conn.prepareStatement(sql)) {
-      ps.setString(1, topic);
-      if (fromDate != null) {
-        ps.setString(2, fromDate);
-        ps.setInt(3, BATCH_SIZE);
-      } else {
-        ps.setInt(2, BATCH_SIZE);
-      }
+      int idx = 1;
+      if (!allTopics) ps.setString(idx++, topic);
+      if (fromDate != null) ps.setString(idx++, fromDate);
+      ps.setInt(idx, BATCH_SIZE);
       ResultSet rs = ps.executeQuery();
       while (rs.next()) {
         clues.add(new ClueDto(
