@@ -6,5 +6,6 @@ public record ClueDto(
     String clueValue,
     String round,
     String gameDate,
-    String canonicalTopic
+    String canonicalTopic,
+    String category
 ) {}

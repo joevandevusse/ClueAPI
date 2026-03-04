@@ -30,7 +30,7 @@ public class ClueResource {
     String sql;
     if (!allTopics && fromDate != null) {
       sql = """
-          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
+          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic, c.category
           FROM clues_java c
           JOIN category_mappings cm ON c.category = cm.jeopardy_category
           WHERE cm.canonical_topic = ? AND c.game_date >= ?
@@ -38,7 +38,7 @@ public class ClueResource {
           """;
     } else if (!allTopics) {
       sql = """
-          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
+          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic, c.category
           FROM clues_java c
           JOIN category_mappings cm ON c.category = cm.jeopardy_category
           WHERE cm.canonical_topic = ?
@@ -46,7 +46,7 @@ public class ClueResource {
           """;
     } else if (fromDate != null) {
       sql = """
-          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
+          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic, c.category
           FROM clues_java c
           JOIN category_mappings cm ON c.category = cm.jeopardy_category
           WHERE c.game_date >= ?
@@ -54,7 +54,7 @@ public class ClueResource {
           """;
     } else {
       sql = """
-          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic
+          SELECT c.question, c.answer, c.clue_value, c.round, c.game_date, cm.canonical_topic, c.category
           FROM clues_java c
           JOIN category_mappings cm ON c.category = cm.jeopardy_category
           ORDER BY RANDOM() LIMIT ?
@@ -75,7 +75,8 @@ public class ClueResource {
             rs.getString("clue_value"),
             rs.getString("round"),
             rs.getString("game_date"),
-            rs.getString("canonical_topic")
+            rs.getString("canonical_topic"),
+            rs.getString("category")
         ));
       }
     }
