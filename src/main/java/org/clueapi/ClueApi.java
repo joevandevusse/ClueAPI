@@ -22,8 +22,9 @@ public class ClueApi {
       config.bundledPlugins.enableCors(cors ->
           cors.addRule(it -> it.anyHost()));
     })
-    .get("/api/topics", topics::getAll)
-    .get("/api/clues",  clues::getByTopic)
-    .post("/api/stats", stats::record);
+    .get("/api/topics",       topics::getAll)
+    .get("/api/clues",        clues::getByTopic)
+    .post("/api/stats",       stats::record)
+    .get("/api/stats/bubble", stats::getBubble);
   }
 }
