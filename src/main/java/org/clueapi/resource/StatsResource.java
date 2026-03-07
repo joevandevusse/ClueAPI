@@ -46,7 +46,7 @@ public class StatsResource {
             COUNT(*) AS clue_count,
             AVG(
               CASE
-                WHEN c.clue_value ~ '^\\$[0-9,]+$'
+                WHEN c.clue_value LIKE '$%'
                 THEN CAST(REPLACE(REPLACE(c.clue_value, '$', ''), ',', '') AS INTEGER)
                 ELSE NULL
               END

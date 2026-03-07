@@ -1,5 +1,7 @@
 package org.clueapi;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.javalin.Javalin;
@@ -199,6 +201,65 @@ class ClueApiTest {
       assertEquals("World History", rs.getString("canonical_topic"));
       assertFalse(rs.getBoolean("passed"));
     }
+  }
+
+  // ── GET /api/stats/bubble ─────────────────────────────────────────────────
+
+  @Test
+  void getBubble_returnsAllTopicsWithExpectedFields() {
+    JavalinTest.test(app, (server, client) -> {
+      var response = client.get("/api/stats/bubble");
+      assertEquals(200, response.code());
+      String body = response.body().string();
+      assertTrue(body.contains("Science & Nature"), "should contain Science & Nature");
+      assertTrue(body.contains("World History"),    "should contain World History");
+      assertTrue(body.contains("canonicalTopic"),   "should have canonicalTopic field");
+      assertTrue(body.contains("clueCount"),        "should have clueCount field");
+      assertTrue(body.contains("meanValue"),        "should have meanValue field");
+      assertTrue(body.contains("attemptCount"),     "should have attemptCount field");
+      assertTrue(body.contains("accuracy"),         "should have accuracy field");
+    });
+  }
+
+  @Test
+  void getBubble_nullAccuracyForTopicsWithNoStats() {
+    JavalinTest.test(app, (server, client) -> {
+      var response = client.get("/api/stats/bubble");
+      assertEquals(200, response.code());
+      String body = response.body().string();
+      // Both seeded topics have no user_stats rows — both should serialize as "accuracy":null
+      int first  = body.indexOf("\"accuracy\":null");
+      int second = first >= 0 ? body.indexOf("\"accuracy\":null", first + 1) : -1;
+      assertTrue(first  >= 0, "first topic should have null accuracy");
+      assertTrue(second >= 0, "second topic should also have null accuracy");
+    });
+  }
+
+  @Test
+  void getBubble_accuracyComputedCorrectly() throws Exception {
+    // Seed 3 stats for Science & Nature: 2 passes, 1 fail → accuracy = 2/3 ≈ 0.667
+    JavalinTest.test(app, (server, client) -> {
+      client.post("/api/stats", "{\"canonicalTopic\":\"Science & Nature\",\"passed\":true}");
+      client.post("/api/stats", "{\"canonicalTopic\":\"Science & Nature\",\"passed\":true}");
+      client.post("/api/stats", "{\"canonicalTopic\":\"Science & Nature\",\"passed\":false}");
+
+      var response = client.get("/api/stats/bubble");
+      assertEquals(200, response.code());
+      String body = response.body().string();
+
+      JsonNode arr = new ObjectMapper().readTree(body);
+      JsonNode scienceNode = null;
+      for (JsonNode node : arr) {
+        if ("Science & Nature".equals(node.get("canonicalTopic").asText())) {
+          scienceNode = node;
+          break;
+        }
+      }
+      assertNotNull(scienceNode, "should find Science & Nature in response");
+      assertEquals(3,       scienceNode.get("attemptCount").asLong());
+      assertFalse(scienceNode.get("accuracy").isNull(), "accuracy should not be null");
+      assertEquals(2.0 / 3.0, scienceNode.get("accuracy").asDouble(), 0.01);
+    });
   }
 
   @Test
